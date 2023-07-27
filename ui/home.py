@@ -81,7 +81,7 @@ class Ui_MainWindow(object):
         self.logo.setMaximumSize(QSize(50, 50))
         self.logo.setStyleSheet(u"image: url(:/all/img/logo.png);\n"
 "border:2px solid rgb(176, 139, 252);\n"
-"border-radius:10px")
+"border-radius:10px;")
         self.Author = QLabel(self.TopLogoInfo)
         self.Author.setObjectName(u"Author")
         self.Author.setGeometry(QRect(90, 30, 60, 30))

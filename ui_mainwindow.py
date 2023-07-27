@@ -49,7 +49,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_5.addWidget(self.label_10)
 
-
         self.verticalLayout.addLayout(self.horizontalLayout_5)
 
         self.horizontalLayout_2 = QHBoxLayout()
@@ -66,7 +65,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.label_4)
 
-
         self.verticalLayout.addLayout(self.horizontalLayout_2)
 
         self.horizontalLayout_4 = QHBoxLayout()
@@ -82,7 +80,6 @@ class Ui_MainWindow(object):
         self.label_9.setMaximumSize(QSize(180, 30))
 
         self.horizontalLayout_4.addWidget(self.label_9)
-
 
         self.verticalLayout.addLayout(self.horizontalLayout_4)
 
@@ -106,7 +103,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_3.addWidget(self.label_8)
 
-
         self.verticalLayout.addLayout(self.horizontalLayout_3)
 
         self.textBrowser = QTextBrowser(self.centralwidget)
@@ -115,9 +111,7 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addWidget(self.textBrowser)
 
-
         self.horizontalLayout.addLayout(self.verticalLayout)
-
 
         self.verticalLayout_2.addLayout(self.horizontalLayout)
 
@@ -138,6 +132,7 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
 
         QMetaObject.connectSlotsByName(MainWindow)
+
     # setupUi
 
     def retranslateUi(self, MainWindow):
@@ -154,6 +149,7 @@ class Ui_MainWindow(object):
         self.label_7.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.label_8.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.menu.setTitle(QCoreApplication.translate("MainWindow", u"Open", None))
+
     # retranslateUi
 
     # 消息框显示函数

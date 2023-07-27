@@ -14,7 +14,16 @@ import math
 import time
 from threading import Thread
 
+
 def eye_aspect_ratio(eye):
+    '''
+    Args:
+        eye:接受识别的眼部节点
+
+    Returns:
+        返回眼睛的长宽比
+
+    '''
     # 垂直眼标志（X，Y）坐标
     A = dist.euclidean(eye[1], eye[5])  # 计算两个集合之间的欧式距离
     B = dist.euclidean(eye[2], eye[4])
@@ -23,15 +32,24 @@ def eye_aspect_ratio(eye):
     C = dist.euclidean(eye[0], eye[3])
     # 眼睛长宽比的计算
     ear = (A + B) / (2.0 * C)
-    # 返回眼睛的长宽比
     return ear
 
+
 def mouth_aspect_ratio(mouth):  # 嘴部
+    '''
+
+    Args:
+        mouth: 嘴部节点
+
+    Returns:
+
+    '''
     A = np.linalg.norm(mouth[2] - mouth[10])  # 51, 59
     B = np.linalg.norm(mouth[4] - mouth[8])  # 53, 57
     C = np.linalg.norm(mouth[0] - mouth[6])  # 49, 55
     mar = (A + B) / (2.0 * C)
     return mar
+
 
 # 初始化DLIB的人脸检测器（HOG），然后创建面部标志物预测
 print("[INFO] loading facial landmark predictor...")
@@ -44,20 +62,23 @@ predictor = dlib.shape_predictor('weights/shape_predictor_68_face_landmarks.dat'
 (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
 (mStart, mEnd) = face_utils.FACIAL_LANDMARKS_IDXS["mouth"]
 
-
 """
 头部姿态识别模块
 """
+
+
 # 获取最大的人脸
 def _largest_face(dets):
-    """
-    @Desc    :   从一个由 dlib 库检测到的人脸框列表中，找到最大的人脸框，并返回该框在列表中的索
+    '''
+    从一个由 dlib 库检测到的人脸框列表中，找到最大的人脸框，并返回该框在列表中的索
                 如果只有一个人脸，直接返回
-                 Args:
-                   dets： 一个由 `dlib.rectangle` 类型的对象组成的列表，每个对象表示一个人脸框
-                 Returns:
-                   人脸索引
-    """
+    Args:
+        dets: 一个由 `dlib.rectangle` 类型的对象组成的列表，每个对象表示一个人脸框
+
+    Returns:
+        largest_index:  人脸索引
+
+    '''
     # 如果列表长度为1，则直接返回
     if len(dets) == 1:
         return 0
@@ -75,20 +96,21 @@ def _largest_face(dets):
     print("largest_face index is {} in {} faces".format(largest_index, len(dets)))
     return largest_index
 
-def get_image_points_from_landmark_shape(landmark_shape):
-    """
-    @Desc    :   从dlib的检测结果抽取姿态估计需要的点坐标
-                 Args:
-                   landmark_shape:  所有的位置点
-                 Returns:
-                   void
-    """
 
+def get_image_points_from_landmark_shape(landmark_shape):
+    '''
+    从dlib的检测结果抽取姿态估计需要的点坐标
+    Args:
+        landmark_shape: 所有的位置点
+
+    Returns:
+        image_points:获取到姿态估计点坐标
+    '''
     if landmark_shape.num_parts != 68:
         print("ERROR:landmark_shape.num_parts-{}".format(landmark_shape.num_parts))
         return -1, None
 
-    # 2D image points. If you change the image, you need to change vector
+    # 2D 图像点。 如果更改图像，则需要更改向量
 
     image_points = np.array([
         (landmark_shape.part(17).x, landmark_shape.part(17).y),  # 17 left brow left corner
@@ -110,13 +132,17 @@ def get_image_points_from_landmark_shape(landmark_shape):
 
 
 def get_pose_estimation(img_size, image_points):
+    '''
+    获取旋转向量和平移向量
+    Args:
+        img_size: 图像大小
+        image_points: 姿态估计需要的2D点
 
-    """
-    @Desc    :   获取旋转向量和平移向量
-                 Returns: void
-    """
+    Returns:
 
-    # 3D model points.
+    '''
+
+    # 3D 模型点
     model_points = np.array([
         (6.825897, 6.760612, 4.402142),  # 33 left brow left corner
         (1.330353, 7.122144, 6.903745),  # 29 left brow right corner
@@ -153,18 +179,18 @@ def get_pose_estimation(img_size, image_points):
 
 
 def get_euler_angle(rotation_vector):
-    """
-    @Desc    :   从旋转向量转换为欧拉角
-                 Args:
+    '''
 
-                 Returns:
-                   void
-    """
+    Args:
+        rotation_vector: 旋转向量
 
-    # calculate rotation angles
+    Returns:
+        返回欧拉角，分别为弧度制和角度制
+    '''
+    # 计算旋转角度
     theta = cv2.norm(rotation_vector, cv2.NORM_L2)
 
-    # transformed to quaterniond
+    # 转化为度数
     w = math.cos(theta / 2)
     x = math.sin(theta / 2) * rotation_vector[0][0] / theta
     y = math.sin(theta / 2) * rotation_vector[1][0] / theta
@@ -200,7 +226,17 @@ def get_euler_angle(rotation_vector):
 
     return 0, pitch, yaw, roll, pitch_degree, yaw_degree, roll_degree
 
+
 def get_pose_estimation_in_euler_angle(landmark_shape, im_szie):
+    '''
+    用欧拉角进行姿态估计
+    Args:
+        landmark_shape: 所有的位置点
+        im_szie: 图像大小
+
+    Returns:
+
+    '''
     try:
         ret, image_points = get_image_points_from_landmark_shape(landmark_shape)
         if ret != 0:
@@ -228,12 +264,14 @@ def get_pose_estimation_in_euler_angle(landmark_shape, im_szie):
 
 
 def get_image_points(img):
-    """
-    @Desc    :   用dlib检测关键点，返回姿态估计需要的几个点坐标
-                 Args:
-                 Returns:
-                   void
-    """
+    '''
+    用dlib检测关键点，返回姿态估计需要的几个点坐标
+    Args:
+        img: 图像
+
+    Returns:
+
+    '''
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # 图片调整为灰色
 
@@ -249,19 +287,28 @@ def get_image_points(img):
 
     return get_image_points_from_landmark_shape(landmark_shape)
 
-"""
-
-"""
 
 # 从视频流循环帧
 def detfatigue(frame):
-    #frame = imutils.resize(frame, width=720)
+    '''
+
+    Args:
+        frame: 视频帧
+
+    Returns:
+        frame: 已经标注出眼睛和嘴巴的框线
+        eyeae: 为眼睛的长宽比
+        mouthar:为嘴巴的长宽比
+        degree: 为返回的欧拉角
+
+    '''
+    # frame = imutils.resize(frame, width=720)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # 使用detector(gray, 0) 进行脸部位置检测
     rects = detector(gray, 0)
     eyear = 0.0
     mouthar = 0.0
-    degree=[]
+    degree = []
     # 循环脸部位置信息，使用predictor(gray, rect)获得脸部特征位置的信息
     for rect in rects:
         shape = predictor(gray, rect)
@@ -276,8 +323,8 @@ def detfatigue(frame):
             print('no face')
         else:
             ret, rotation_vector, translation_vector, camera_matrix, dist_coeffs = get_pose_estimation(size,
-                                                                                           image_points)
-            degree=get_euler_angle(rotation_vector)
+                                                                                                       image_points)
+            degree = get_euler_angle(rotation_vector)
         # 提取左眼和右眼坐标
         leftEye = shape[lStart:lEnd]
         rightEye = shape[rStart:rEnd]
@@ -301,15 +348,9 @@ def detfatigue(frame):
         cv2.drawContours(frame, [mouthHull], -1, (0, 255, 0), 1)
 
         # 画出眼睛、嘴巴竖直线
-        cv2.line(frame,tuple(shape[38]),tuple(shape[40]),(0, 255, 0), 1)
-        cv2.line(frame,tuple(shape[43]),tuple(shape[47]),(0, 255, 0), 1)
-        cv2.line(frame,tuple(shape[51]),tuple(shape[57]),(0, 255, 0), 1)
-        cv2.line(frame,tuple(shape[48]),tuple(shape[54]),(0, 255, 0), 1)
+        cv2.line(frame, tuple(shape[38]), tuple(shape[40]), (0, 255, 0), 1)
+        cv2.line(frame, tuple(shape[43]), tuple(shape[47]), (0, 255, 0), 1)
+        cv2.line(frame, tuple(shape[51]), tuple(shape[57]), (0, 255, 0), 1)
+        cv2.line(frame, tuple(shape[48]), tuple(shape[54]), (0, 255, 0), 1)
 
-    # 返回信息
-    # frame已经标注出眼睛和嘴巴的框线
-    # eyeae为眼睛的长宽比
-    # mouthar为嘴巴的长宽比
-    # degree为返回的欧拉角
-
-    return(frame,eyear,mouthar,degree)
+    return (frame, eyear, mouthar, degree)

@@ -16,8 +16,7 @@ from ui.CustomMessageBox import MessageBox
 import cv2
 import json
 import myframe
-from timeseries.cnnlstm import cnnlstm, cnnlstms
-from test import connect
+
 import pyttsx3 as pyttsx
 import re
 # 定义变量
@@ -28,20 +27,26 @@ import json
 str_mes = ''
 
 
-async def connect(data):
+async def connect(mode, data):
+    '''
+    Websocket连接函数
+    Args:
+        mode: 选择时间序列模型
+        data: 数据
+
+    Returns:
+
+    '''
+
     # WebSocket连接事件处理函数
     async def on_open(ws):
         print('WebSocket连接已建立')
-
         # 构造要发送的数据
-        # data = {
-        #     'name': 'Alice',
-        #     'age': 25,
-        #     'city': 'New York'
-        # }
-        # data=[1,2,3,4,5,6]
-
         # 将数据转换为JSON字符串并发送给服务器
+        if (mode == 'CNN-LSTM'):
+            data.append(0)
+        else:
+            data.append(0)
         await ws.send(json.dumps(data))
 
     # WebSocket消息接收事件处理函数
@@ -51,23 +56,17 @@ async def connect(data):
         # list.append(message)
         str_mes = ''
         str_mes += str(message)
-        # 在这里处理服务器返回的数据
-        # return list(message)
-        # 关闭WebSocket连接
-        # await ws.close()
 
     # WebSocket关闭事件处理函数
     async def on_close(ws):
         print('WebSocket连接已关闭')
 
-    async with websockets.connect('ws://192.168.43.222:8080') as ws:
+    async with websockets.connect('ws://47.94.57.223:8080') as ws:
         # 调用连接建立时的事件处理函数
         await on_open(ws)
-
         # 循环接收服务器消息
         message = await ws.recv()
         await on_message(ws, message)
-
         # 调用连接关闭时的事件处理函数
         await on_close(ws)
 
@@ -96,14 +95,17 @@ Rollmouth = 0  # 循环内打哈欠数
 Percloslist = []
 Rolls = 0
 perclos = 0
-degrees_last=[]
-degree_count=0
+degrees_last = []
+degree_count = 0
+
+
 ####################################################
 
 # 界面
 
 ####################################################
 class MainWindow(QMainWindow, Ui_MainWindow):
+
     # main2yolo_begin_sgl = Signal()  # The main window sends an execution signal to the yolo instance
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -111,8 +113,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         # 打开文件类型，用于类的定义
         self.f_type = None
+        # 向服务器传递模型参数
+        self.select_model = 'CNN-LSTM'
         # 原窗口初始化
-        self.setGeometry(50, 20, 1150, 450)
+        self.setGeometry(50, 20, 1150, 450)  # 设置窗口初始位置和大小
         self.setAttribute(Qt.WA_TranslucentBackground)  # rounded transparent
         self.setWindowFlags(Qt.FramelessWindowHint)  # Set window flag: hide window borders
         UIFuncitons.uiDefinitions(self)
@@ -121,19 +125,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         UIFuncitons.shadow_style(self, self.Target_QF, QColor(251, 157, 139))
         UIFuncitons.shadow_style(self, self.Fps_QF, QColor(170, 128, 213))
         UIFuncitons.shadow_style(self, self.Model_QF, QColor(64, 186, 193))
-
+        # 作者初始化
+        self.logo.setToolTip("我们是作者")
         # 读取models文件
-        self.pt_list = os.listdir('./models')
-        self.pt_list = [file for file in self.pt_list if file.endswith('.pt')]
-        self.pt_list.sort(key=lambda x: os.path.getsize('./models/' + x))  # sort by file size
-        self.model_box.clear()
-        self.model_box.addItems(self.pt_list)
-        # 计时器用于刷新模型combobox
-        self.Qtimer_ModelBox = QTimer(self)  # Timer: Monitor model file changes every 2 seconds
-        self.Qtimer_ModelBox.timeout.connect(self.ModelBoxRefre)
-        self.Qtimer_ModelBox.start(2000)
+        new_items = ['CNN-LSTM', 'Transformer']
+        self.model_box.addItems(new_items)
 
-        # Model parameters
+        # 模型参数，预留接口
         self.model_box.currentTextChanged.connect(self.change_model)
         self.iou_spinbox.valueChanged.connect(lambda x: self.change_val(x, 'iou_spinbox'))  # iou box
         self.iou_slider.valueChanged.connect(lambda x: self.change_val(x, 'iou_slider'))  # iou scroll bar
@@ -143,7 +141,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.speed_slider.valueChanged.connect(lambda x: self.change_val(x, 'speed_slider'))  # speed scroll bar
 
         # 初始化label
-        self.Class_num.setText('--')
+        self.Class_num.setText('清醒')
         self.Target_num.setText('--')
         self.fps_label.setText('--')
         self.Model_name.setText(self.model_box.currentText())
@@ -157,19 +155,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # 开始检测按钮
         self.run_button.clicked.connect(self.toggle_timer)  # pause/start
-        # self.stop_button.clicked.connect(self.stop)            # termination按钮被删除了
 
-        # Other function buttons
-        # self.save_res_button.toggled.connect(self.is_save_res)  # save image option
-        # self.save_txt_button.toggled.connect(self.is_save_txt)  # Save label option
         # 左侧展开按钮
         self.ToggleBotton.clicked.connect(lambda: UIFuncitons.toggleMenu(self, True))  # left navigation button
         # 右侧设置按钮
         self.settings_button.clicked.connect(lambda: UIFuncitons.settingBox(self, True))  # top right settings button
         # 提示框初始化
         self.loading_box = MessageBox(title='Note', text='loading camera...', time=3000, auto=False, menus=False)
-        # initialization
+        # 模型重新加载的提示框初始化
+        self.loading_box_model = MessageBox(title='Note', text='模型加载中...', time=3000, auto=False, menus=False)
+        # 初始化
         self.load_config()
+
+    # 为按钮绑定空格
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Space:
+            self.run_button.click()
+        else:
+            super().keyPressEvent(event)
 
     # 重新开始检测的函数
     def Restart_detection(self):
@@ -191,7 +194,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.run_button.clicked.connect(self.toggle_timer)  # 绑定toggle_timer函数
                 self.run_button.setToolTip("开始检测")  # 设置提示信息
                 # 初始化标题
-                self.Class_num.setText('---')
+                self.Class_num.setText('清醒')
                 self.Target_num.setText('---')
                 self.fps_label.setText('---')
                 # 关闭加载提示框
@@ -217,13 +220,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.run_button.clicked.connect(self.toggle_timer)  # 绑定toggle_timer函数
                 self.run_button.setToolTip("开始检测")  # 设置提示信息
                 CamConfig_init()
-                # # 初始化摄像头类之后，先暂停摄像头调取
+                # 初始化摄像头类之后，先暂停摄像头调取
                 # self.f_type.v_timer.stop()
                 # 设置重新检测按钮的功能可用
                 self.src_rtsp_button.setEnabled(True)
                 self.src_rtsp_button.setToolTip('重新开始检测...')
                 # 关闭加载提示框
                 self.loading_box.close()
+                # 自动点击run_button按钮
+                self.run_button.click()
             elif empower_box == QMessageBox.StandardButton.Close:
                 # 用户点击了“否”按钮
                 self.run_button.setEnabled(False)  # 禁止点击run_button
@@ -373,20 +378,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # change model
     def change_model(self, x):
         self.select_model = self.model_box.currentText()
+        # 提示框初始化
+        self.loading_box_model.show()
+        # 摄像头类初始化
+        CamConfig_init()
+        # 初始化摄像头类之后，先暂停摄像头调取
+        self.f_type.v_timer.stop()
+        # 初始化标题
+        self.Class_num.setText('清醒')
+        self.Target_num.setText('---')
+        self.fps_label.setText('---')
         # self.yolo_predict.new_model_name = "./models/%s" % self.select_model
         self.show_status('Change Model：%s' % self.select_model)
         self.Model_name.setText(self.select_model)
-
-    # Cycle monitoring model file changes 实时更新模型库的情况
-    def ModelBoxRefre(self):
-        pt_list = os.listdir('./models')
-        pt_list = [file for file in pt_list if file.endswith('.pt')]
-        pt_list.sort(key=lambda x: os.path.getsize('./models/' + x))
-        # It must be sorted before comparing, otherwise the list will be refreshed all the time
-        if pt_list != self.pt_list:
-            self.pt_list = pt_list
-            self.model_box.clear()
-            self.model_box.addItems(self.pt_list)
+        # 关闭加载提示框
+        self.loading_box_model.close()
 
     # Get the mouse position (used to hold down the title bar and drag the window)记录鼠标位置
     def mousePressEvent(self, event):
@@ -463,8 +469,7 @@ class CamConfig:
     def show_pic(self):
         # 全局变量
         # 在函数中引入定义的全局变量
-        global EYE_AR_THRESH, EYE_AR_CONSEC_FRAMES, MAR_THRESH, MOUTH_AR_CONSEC_FRAMES, COUNTER, TOTAL, mCOUNTER, mTOTAL, ActionCOUNTER, Roll, Rolleye, Rollmouth, Percloslist, Rolls, perclos,degrees_last,degree_count
-
+        global EYE_AR_THRESH, EYE_AR_CONSEC_FRAMES, MAR_THRESH, MOUTH_AR_CONSEC_FRAMES, COUNTER, TOTAL, mCOUNTER, mTOTAL, ActionCOUNTER, Roll, Rolleye, Rollmouth, Percloslist, Rolls, perclos, degrees_last, degree_count
 
         # 读取摄像头的一帧画面
         success, frame = self.cap.read()
@@ -567,7 +572,7 @@ class CamConfig:
             # 每一帧Roll加1
             Roll += 1
             # 当检测满150帧时，计算模型得分
-            if Roll == 150:
+            if Roll == 10:
                 # 计算Perclos模型得分
                 perclos = (Rolleye / Roll) + (Rollmouth / Roll) * 0.2
                 Percloslist.append(perclos)
@@ -578,10 +583,10 @@ class CamConfig:
                 Rollmouth = 0
                 print(Percloslist)
 
-            PERCLO_LEN = 50
+            PERCLO_LEN = 20
             if len(Percloslist) == PERCLO_LEN:
                 Percloslist.append(Rolls)
-                asyncio.get_event_loop().run_until_complete(connect(Percloslist))
+                asyncio.get_event_loop().run_until_complete(connect(self.main_window.select_model, Percloslist))
                 print(str_mes)
                 numbers = re.findall(r'[-+]?\d*\.\d+|\d+', str_mes)
                 float_list = [float(x) for x in numbers]
@@ -604,20 +609,20 @@ class CamConfig:
             else:
                 self.main_window.setClass_num("清醒")
             # 通过欧拉角判定姿态进行提示
-            if degree_count==0:
+            if degree_count == 0:
                 if len(degree) != 0:
                     degrees_last = [degree[4], degree[5], degree[6]]
-                    degree_count=degree_count+1
+                    degree_count = degree_count + 1
             else:
                 if len(degree) != 0:
                     degrees = [degree[4], degree[5], degree[6]]
-                    degrees_diff=np.array(degrees)-np.array(degrees_last)
-                    if max(degrees_diff)>30:
+                    degrees_diff = np.array(degrees) - np.array(degrees_last)
+                    if max(degrees_diff) > 30:
                         self.main_window.setTarget_num('颈部姿势不当')
                         engine = pyttsx.init()
                         engine.say('当前姿势不当，请注意休息')
                         engine.runAndWait()
-                    degrees_last=degrees
+                    degrees_last = degrees
 
     # 刷新画面帧率
     def update_fps(self):

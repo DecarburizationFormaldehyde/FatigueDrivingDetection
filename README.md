@@ -1,2 +1,3 @@
 # FatigueDrivingDetection
 这是一个基于双端计算的疲劳驾驶检测，采用yolov5框架和openCV、dlib，并采用高精度自适应时间序列预测提高报警能力
+其中，Sequentially_in_Sever 要部署在nodejs服务器上

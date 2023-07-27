@@ -2,10 +2,11 @@ from PySide6.QtCore import *
 from PySide6.QtGui import *
 from PySide6.QtWidgets import *
 
-# After the interface hides the window, use this file to achieve borderless stretching of the window
+
+# 界面隐藏窗口后，使用该文件实现窗口的无边框拉伸
 class CustomGrip(QWidget):
-    def __init__(self, parent, position, disable_color = False):
-        # SETUP UI
+    def __init__(self, parent, position, disable_color=False):
+        # 启动UI
         QWidget.__init__(self)
         self.parent = parent
         self.setParent(parent)
@@ -29,6 +30,7 @@ class CustomGrip(QWidget):
                 geo.setTop(geo.bottom() - height)
                 self.parent.setGeometry(geo)
                 event.accept()
+
             self.wi.top.mouseMoveEvent = resize_top
 
             # ENABLE COLOR
@@ -53,6 +55,7 @@ class CustomGrip(QWidget):
                 height = max(self.parent.minimumHeight(), self.parent.height() + delta.y())
                 self.parent.resize(self.parent.width(), height)
                 event.accept()
+
             self.wi.bottom.mouseMoveEvent = resize_bottom
 
             # ENABLE COLOR
@@ -75,6 +78,7 @@ class CustomGrip(QWidget):
                 geo.setLeft(geo.right() - width)
                 self.parent.setGeometry(geo)
                 event.accept()
+
             self.wi.leftgrip.mouseMoveEvent = resize_left
 
             # ENABLE COLOR
@@ -92,12 +96,12 @@ class CustomGrip(QWidget):
                 width = max(self.parent.minimumWidth(), self.parent.width() + delta.x())
                 self.parent.resize(width, self.parent.height())
                 event.accept()
+
             self.wi.rightgrip.mouseMoveEvent = resize_right
 
             # ENABLE COLOR
             if disable_color:
                 self.wi.rightgrip.setStyleSheet("background: transparent")
-
 
     def mouseReleaseEvent(self, event):
         self.mousePos = None
